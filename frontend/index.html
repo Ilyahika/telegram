@@ -1,67 +1,23 @@
 <!doctype html>
-<html lang="ru">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-  <meta name="theme-color" content="#09081a">
-  <title>QWE — Technical Maintenance</title>
-  <!-- Официальный SDK Telegram: доступ к initData и управлению окном Mini App -->
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/static/style.css">
-  <script defer src="/static/app.js"></script>
-</head>
-<body>
-  <!-- Декоративные слои не перехватывают касания пользователя -->
-  <div class="ambient ambient-blue" aria-hidden="true"></div>
-  <div class="ambient ambient-red" aria-hidden="true"></div>
-  <div class="ambient ambient-purple" aria-hidden="true"></div>
-  <div class="grain" aria-hidden="true"></div>
-
-  <!-- Экран анимированной загрузки. JavaScript скрывает его после подготовки -->
-  <div id="splash" class="splash" role="status" aria-live="polite">
-    <div class="splash-core">
-      <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
-      <div class="splash-logo">QWE<span class="spark">✦</span></div>
-      <div class="splash-caption">ENTERING THE EXPERIENCE</div>
-    </div>
-    <div class="loader"><span></span></div>
-    <span class="loader-caption">ЗАГРУЗКА ПРОФИЛЯ</span>
-  </div>
-
-  <main id="app" class="page is-hidden">
-    <header class="topbar">
-      <div class="brand"><span class="brand-mark">✦</span> QWE</div>
-      <div class="status"><span class="status-dot"></span> SYSTEM STATUS</div>
-    </header>
-
-    <!-- Карточка профиля: имя поступает из проверенного ответа Backend -->
-    <section class="profile" aria-label="Профиль игрока">
-      <div class="avatar" id="avatar"><span id="avatar-letter">Q</span></div>
-      <div class="profile-copy">
-        <div class="eyebrow">ВАШ ПРОФИЛЬ</div>
-        <div id="player-name" class="player-name">Гость</div>
-        <div id="player-subtitle" class="player-subtitle">Подключение к Telegram...</div>
-      </div>
-      <div class="profile-check" title="Профиль"><span>✓</span></div>
-    </section>
-
-    <section class="hero" aria-label="Объявление о технических работах">
-      <div class="hero-glow" aria-hidden="true"></div>
-      <div class="hero-topline"><span class="hero-pill">✦ QWE / STATUS 001</span><span class="hero-cross">✳</span></div>
-      <div class="center-art" aria-hidden="true">
-        <div class="art-ring art-ring-1"></div><div class="art-ring art-ring-2"></div>
-        <div class="art-icon">⚙</div>
-      </div>
-      <div class="kicker">ВРЕМЕННО НЕДОСТУПНО</div>
-      <h1>Технические<br><em>работы</em></h1>
-      <p>Мы готовим пространство QWE к запуску.<br>Совсем скоро здесь появится нечто особенное.</p>
-      <div class="line"><span></span></div>
-      <div class="hero-bottom"><span>QWE EXPERIENCE</span><span>COMING SOON <b>↗</b></span></div>
-    </section>
-
-    <footer>
-      <span>© QWE · 2026</span><span class="footer-pulse">● &nbsp; РАЗРАБОТКА В ПРОЦЕССЕ</span>
-    </footer>
-  </main>
-</body>
-</html>
+<html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#09091b"><title>QWE · Arcade</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="/static/style.css"><script defer src="/static/app.js"></script>
+</head><body>
+<div class="aurora a1"></div><div class="aurora a2"></div>
+<div id="splash" class="splash"><div class="ring"></div><strong class="glow-title">QWE</strong><span>ЗАГРУЗКА ПРОФИЛЯ</span></div>
+<div id="app" class="shell is-hidden">
+<header class="bar"><button id="header-profile" class="identity" data-page="profile"><span class="avatar" id="avatar">Q</span><span><b id="player-name">Гость</b><small id="player-subtitle">Подключение…</small></span></button><div class="brand">QWE<span>✦</span></div></header>
+<main class="content">
+<section class="screen active" id="screen-profile"><div class="section-title"><small>ВАШЕ ПРОСТРАНСТВО</small><h1>Профиль <em>игрока</em></h1></div><div class="panel intro"><div class="token-icon">✦</div><div><div class="muted">УРОВЕНЬ</div><strong id="level">1</strong></div><span class="rank">QWE MEMBER</span></div>
+<div class="stat-grid"><div class="panel stat"><small>Виртуальные очки</small><strong id="points">100</strong></div><div class="panel stat"><small>Коллекционные BTC*</small><strong id="bitcoin">0</strong></div><div class="panel stat"><small>Банк: очки</small><strong id="bank-points">0</strong></div><div class="panel stat"><small>Банк: ставка процента</small><strong id="bank-rate">0%</strong></div></div>
+<div class="panel info-list"><div><span>Сыграно игр</span><b id="games-played">0</b></div><div><span>Побед / поражений</span><b id="win-loss">0 / 0</b></div><div><span>Коэффициент побед</span><b id="win-rate">0%</b></div><div><span>Любимая игра</span><b id="favorite-game">—</b></div><div><span>Имущество</span><b id="property">Пока нет</b></div></div><p class="footnote">* BTC — декоративный коллекционный показатель, не криптовалюта.</p></section>
+<section class="screen" id="screen-earn"><div class="section-title"><small>ЕЖЕДНЕВНЫЕ БОНУСЫ</small><h1>Заработок <em>очков</em></h1></div><div class="panel reward"><div class="reward-icon">◷</div><div><b>Ежечасная награда</b><small>30 бесплатных очков каждый час</small></div><button class="action" data-bonus="hourly">Получить</button></div><div class="panel reward"><div class="reward-icon">✦</div><div><b>Ежедневная награда</b><small>150 очков раз в сутки</small></div><button class="action" data-bonus="daily">Получить</button></div><div class="panel reward"><div class="reward-icon">♡</div><div><b>Помощь новичку</b><small>100 очков, если баланс равен нулю; раз в сутки</small></div><button class="action" data-bonus="rescue">Получить</button></div><p class="footnote">Очки нельзя купить, обменять на деньги или вывести.</p></section>
+<section class="screen" id="screen-games"><div class="section-title"><small>QWE ARCADE</small><h1>Игровая <em>зона</em></h1></div><div class="game-list"><button class="game-card" data-game="crash"><span class="game-emoji">↗</span><span><b>Краш · реакция</b><small>Останови растущий множитель вовремя</small></span><span>›</span></button><button class="game-card" data-game="wheel"><span class="game-emoji">◉</span><span><b>Апдейт · колесо</b><small>Выбери сектор и останови стрелку</small></span><span>›</span></button><button class="game-card" data-game="mines"><span class="game-emoji">✧</span><span><b>Мины · память</b><small>Открывай безопасные клетки</small></span><span>›</span></button><button class="game-card" data-game="plinko"><span class="game-emoji">⬡</span><span><b>Плинко · аркада</b><small>Запусти шарик через поле штырьков</small></span><span>›</span></button></div><div class="panel playroom" id="playroom"><div id="game-title">Выбери игру</div><div id="playfield" class="playfield">Мини-игры без ставок и денежных призов.</div><button id="play-button" class="action hidden">Играть</button></div></section>
+<section class="screen" id="screen-bank"><div class="section-title"><small>QWE VAULT</small><h1>Мой <em>банк</em></h1></div><div class="panel bank"><div class="vault-sign">◇</div><small>НАКОПЛЕНИЯ В ОЧКАХ</small><strong id="bank-big">0</strong><p>Банк в разработке. Будущая система накоплений будет использовать только игровые очки, без процентов на реальные деньги.</p></div></section>
+<section class="screen" id="screen-menu"><div class="section-title"><small>QWE SYSTEM</small><h1>Главное <em>меню</em></h1></div><div class="panel info-list"><div><span>Версия</span><b>QWE Alpha 0.2</b></div><div><span>Оформление</span><b>Neon Pulse</b></div><div><span>Статус</span><b>В разработке</b></div></div><button id="admin-button" class="game-card hidden"><span class="game-emoji">⚙</span><span><b>Админ-панель</b><small>Управление и статистика</small></span><span>›</span></button><div id="admin-output" class="panel hidden"></div></section>
+</main>
+<nav class="bottom-nav" aria-label="Навигация"><button class="nav-item active" data-page="profile"><span>◉</span><small>Профиль</small></button><button class="nav-item" data-page="earn"><span>✦</span><small>Заработок</small></button><button class="nav-item" data-page="games"><span>▦</span><small>Игры</small></button><button class="nav-item" data-page="bank"><span>◇</span><small>Банк</small></button><button class="nav-item" data-page="menu"><span>☰</span><small>Меню</small></button></nav>
+<div id="toast" role="status" aria-live="polite"></div>
+</div></body></html>

@@ -27,6 +27,26 @@ def initialize():
                 last_seen_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        # Обновление схемы без удаления старых профилей.
+        existing = {row[1] for row in db.execute("PRAGMA table_info(players)")}
+        additions = {
+            "level": "INTEGER NOT NULL DEFAULT 1",
+            "points": "INTEGER NOT NULL DEFAULT 100",
+            "bitcoin": "REAL NOT NULL DEFAULT 0",
+            "bank_points": "INTEGER NOT NULL DEFAULT 0",
+            "bank_rate": "REAL NOT NULL DEFAULT 0",
+            "games_played": "INTEGER NOT NULL DEFAULT 0",
+            "games_won": "INTEGER NOT NULL DEFAULT 0",
+            "games_lost": "INTEGER NOT NULL DEFAULT 0",
+            "favorite_game": "TEXT NOT NULL DEFAULT 'Нет'",
+            "property_name": "TEXT NOT NULL DEFAULT 'Пока нет'",
+            "hourly_claimed_at": "INTEGER NOT NULL DEFAULT 0",
+            "daily_claimed_at": "INTEGER NOT NULL DEFAULT 0",
+            "rescue_claimed_at": "INTEGER NOT NULL DEFAULT 0"
+        }
+        for field, definition in additions.items():
+            if field not in existing:
+                db.execute(f"ALTER TABLE players ADD COLUMN {field} {definition}")
         db.commit()
     finally:
         db.close()
@@ -51,9 +71,39 @@ def upsert_player(user: dict) -> dict:
         """, (telegram_id, display_name, username, photo_url))
         db.commit()
         row = db.execute("""
-            SELECT telegram_id, display_name, username, photo_url, created_at
+            SELECT *
             FROM players WHERE telegram_id = ?
         """, (telegram_id,)).fetchone()
         return dict(row)
+    finally:
+        db.close()
+
+
+def claim_bonus(telegram_id: int, kind: str) -> dict:
+    """Начисление бесплатных виртуальных очков, время проверяется сервером."""
+    import time
+    from fastapi import HTTPException
+    field, cooldown, amount = {
+        "hourly": ("hourly_claimed_at", 3600, 30),
+        "daily": ("daily_claimed_at", 86400, 150),
+        "rescue": ("rescue_claimed_at", 86400, 100),
+    }.get(kind, (None, None, None))
+    if not field:
+        raise HTTPException(400, "Неизвестная награда")
+    db = connection()
+    try:
+        db.execute("BEGIN IMMEDIATE")
+        player = db.execute("SELECT * FROM players WHERE telegram_id=?", (telegram_id,)).fetchone()
+        if not player:
+            raise HTTPException(404, "Профиль не найден")
+        if kind == "rescue" and player["points"] > 0:
+            raise HTTPException(400, "Бонус доступен при нулевом балансе")
+        now = int(time.time())
+        last = player[field]
+        if now - last < cooldown:
+            raise HTTPException(429, f"Подожди ещё {cooldown-(now-last)} секунд")
+        db.execute(f"UPDATE players SET points=points+?, {field}=? WHERE telegram_id=?", (amount, now, telegram_id))
+        db.commit()
+        return {"awarded": amount, "points": player["points"] + amount}
     finally:
         db.close()

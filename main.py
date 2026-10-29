@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from auth import verify_init_data
 from bot import run_bot
-from database import initialize, upsert_player
+from database import initialize, upsert_player, claim_bonus, connection
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -62,3 +62,29 @@ def login(payload: TelegramLogin):
     verified_user = verify_init_data(payload.init_data)
     profile = upsert_player(verified_user)
     return {"success": True, "player": profile}
+
+
+class BonusRequest(TelegramLogin):
+    kind: str
+
+
+@app.post("/api/bonus")
+def get_bonus(payload: BonusRequest):
+    """Важно: нельзя доверять ID игрока из браузера — проверяем подпись заново."""
+    user = verify_init_data(payload.init_data)
+    return claim_bonus(int(user["id"]), payload.kind)
+
+
+@app.post("/api/admin/status")
+def admin_status(payload: TelegramLogin):
+    """Доступ к административной информации проверяется на сервере."""
+    user = verify_init_data(payload.init_data)
+    if int(user["id"]) != 1181838335:
+        from fastapi import HTTPException
+        raise HTTPException(403, "Доступ запрещён")
+    db = connection()
+    try:
+        count = db.execute("SELECT COUNT(*) FROM players").fetchone()[0]
+        return {"players_count": count, "message": "Панель администратора QWE"}
+    finally:
+        db.close()
