@@ -34,7 +34,8 @@ def initialize():
             "points": "INTEGER NOT NULL DEFAULT 100",
             "bitcoin": "REAL NOT NULL DEFAULT 0",
             "bank_points": "INTEGER NOT NULL DEFAULT 0",
-            "bank_rate": "REAL NOT NULL DEFAULT 0",
+            "bank_rate": "REAL NOT NULL DEFAULT 6",
+            "bank_updated_at": "INTEGER NOT NULL DEFAULT 0",
             "games_played": "INTEGER NOT NULL DEFAULT 0",
             "games_won": "INTEGER NOT NULL DEFAULT 0",
             "games_lost": "INTEGER NOT NULL DEFAULT 0",
@@ -107,3 +108,55 @@ def claim_bonus(telegram_id: int, kind: str) -> dict:
         return {"awarded": amount, "points": player["points"] + amount}
     finally:
         db.close()
+
+
+# Учебная экономика: «₽» здесь условная единица, не платёжное средство.
+# Банк начисляет игровые бонусы только завершёнными 10-минутными периодами.
+def bank_operation(telegram_id: int, action: str, amount: int) -> dict:
+    import time
+    from fastapi import HTTPException
+    if action not in ("deposit", "withdraw", "refresh"):
+        raise HTTPException(400, "Неизвестная операция")
+    if action != "refresh" and not (1 <= amount <= 1_000_000):
+        raise HTTPException(400, "Укажи сумму от 1 до 1 000 000")
+    db = connection()
+    try:
+        db.execute("BEGIN IMMEDIATE")
+        row = db.execute("SELECT * FROM players WHERE telegram_id=?", (telegram_id,)).fetchone()
+        if row is None:
+            raise HTTPException(404, "Игрок не найден")
+        now = int(time.time())
+        # Интервалы считаем от момента открытия вклада, а не от запуска сервера.
+        last = int(row["bank_updated_at"] or now)
+        intervals = min(52560, max(0,(now-last)//600))
+        balance = int(row["bank_points"])
+        rate = min(20.0, max(0.0,float(row["bank_rate"])))
+        # Эквивалент почасовой ставки за десятиминутный период.
+        for _ in range(intervals):
+            balance += int(balance * (rate / 600.0))
+        last = last+intervals*600 if row["bank_updated_at"] else now
+        wallet = int(row["points"])
+        if action == "deposit":
+            if wallet < amount: raise HTTPException(400, "Недостаточно игровых ₽")
+            wallet -= amount; balance += amount
+        if action == "withdraw":
+            if balance < amount: raise HTTPException(400, "Недостаточно средств в банке")
+            balance -= amount; wallet += amount
+        db.execute("UPDATE players SET points=?,bank_points=?,bank_updated_at=? WHERE telegram_id=?",(wallet,balance,last,telegram_id))
+        db.commit()
+        return {"points":wallet,"bank_points":balance,"bank_rate":rate,"next_update":last+600,"intervals_applied":intervals}
+    finally:
+        db.close()
+
+
+def admin_settings(admin_id: int, target_id: int, rate: float) -> dict:
+    from fastapi import HTTPException
+    if admin_id != 1181838335: raise HTTPException(403,"Доступ запрещён")
+    if not 0 <= rate <= 20: raise HTTPException(400,"Процент от 0 до 20")
+    db=connection()
+    try:
+        result=db.execute("UPDATE players SET bank_rate=? WHERE telegram_id=?",(rate,target_id))
+        if not result.rowcount: raise HTTPException(404,"Игрок не найден")
+        db.commit()
+        return {"target_id":target_id,"bank_rate":rate}
+    finally: db.close()
