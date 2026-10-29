@@ -1,0 +1,37 @@
+# QWE — Telegram Mini App (стартовая версия)
+
+Первый экран с анимированной заставкой, сообщением «Технические работы» и загрузкой Telegram-профиля через проверенный на сервере `initData`.
+
+## Устройство проекта
+- `main.py` — FastAPI, раздача страницы, API `/api/auth`, запуск Telegram-бота
+- `bot.py` — команда `/start`, любые сообщения и кнопка «✦ Открыть QWE»
+- `auth.py` — проверка HMAC-подписи и свежести Telegram `initData`
+- `database.py` — SQLite, создание/обновление игрока по Telegram ID
+- `frontend/index.html` — разметка главной страницы
+- `frontend/style.css` — все стили и анимации; основные цвета в `:root`
+- `frontend/app.js` — отправка `initData` и отображение профиля
+- `.env.example` — пример переменных окружения
+
+## Локальный запуск
+1. Установи Python 3.11+.
+2. Создай окружение: `python -m venv .venv`, активируй его.
+3. `pip install -r requirements.txt`
+4. Скопируй `.env.example` в `.env`, поставь настоящий `BOT_TOKEN` и публичный HTTPS `WEBAPP_URL`.
+5. Запускай **только** `uvicorn main:app --reload` — бот стартует вместе с сервером (RUN_BOT=1). Для проверки страницы без запуска бота можно указать `RUN_BOT=0`.
+6. Локальный адрес `http://127.0.0.1:8000` для проверки HTML, но Telegram Mini App должен открываться по HTTPS. Для Telegram-разработки опубликуй сервис на Render.
+
+## Render
+- **Language:** Python
+- **Build Command:** `pip install -r requirements.txt`
+- **Start Command:** `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- **Environment:** `BOT_TOKEN` и `WEBAPP_URL` = точный HTTPS-адрес сервиса; `RUN_BOT=1`
+- **Instance:** один работающий процесс / один Uvicorn worker — нельзя запускать одновременно второй polling с тем же токеном.
+- **Branch:** название реальной ветки GitHub (обычно `main`).
+
+ВНИМАНИЕ: SQLite на стандартной файловой системе Render не обеспечивает постоянное хранение между деплоями. Для игроков на настоящем сервере переходи на PostgreSQL или Persistent Disk (с соответствующими ограничениями).
+
+## Безопасность
+- Не загружай `.env` с токеном в GitHub.
+- Не используй `initDataUnsafe` для авторизации: только `/api/auth` проверяет подпись на сервере.
+- `auth_date` ограничен одним часом; после истечения времени пользователь должен заново открыть Mini App.
+- Эта версия не содержит механик ставок, покупок фишек или вывода денег.

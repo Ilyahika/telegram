@@ -1,26 +1,64 @@
+"""Точка входа QWE: FastAPI + (по настройке) Telegram polling."""
+import asyncio
+import logging
+import os
+from contextlib import asynccontextmanager, suppress
+from pathlib import Path
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
-app = FastAPI()
-players = {}
+from auth import verify_init_data
+from bot import run_bot
+from database import initialize, upsert_player
 
-@app.get("/")
+load_dotenv()
+logging.basicConfig(level=logging.INFO)
+ROOT = Path(__file__).resolve().parent
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Создаём таблицу при запуске, корректно останавливаем фоновый polling."""
+    initialize()
+    bot_task = None
+    if os.getenv("RUN_BOT", "1") == "1":
+        bot_task = asyncio.create_task(run_bot())
+    yield
+    if bot_task is not None:
+        bot_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await bot_task
+
+
+app = FastAPI(title="QWE Mini App", lifespan=lifespan)
+# Статические CSS/JS доступны из /static/...
+app.mount("/static", StaticFiles(directory=ROOT / "frontend"), name="static")
+
+
+class TelegramLogin(BaseModel):
+    # Проверяем длину запросов, чтобы не принимать чрезмерно большие данные
+    init_data: str = Field(min_length=1, max_length=16384)
+
+
+@app.get("/", include_in_schema=False)
 def home():
-    return {'message': "Добро пожаловать!"}
-
-class PlayerCreate(BaseModel):
-    name: str
+    """Отдаём фронтенд пользователю Telegram."""
+    return FileResponse(ROOT / "frontend" / "index.html")
 
 
+@app.get("/api/health")
+def health():
+    """Простая проверка, что сервер работает."""
+    return {"status": "ok", "project": "QWE"}
 
-@app.get("/player")
-def get_player(player: PlayerCreate):
-    player_id = max(player.keys(), default=0) + 1
-    players[player_id] = {
-        "name": 'Player',
-        "coins": 100
-    }
-    return {
-        "id": player_id,
-        "player": players[player_id]
-    }
+
+@app.post("/api/auth")
+def login(payload: TelegramLogin):
+    """Только сервер проверяет подпись и создаёт/загружает профиль игрока."""
+    verified_user = verify_init_data(payload.init_data)
+    profile = upsert_player(verified_user)
+    return {"success": True, "player": profile}

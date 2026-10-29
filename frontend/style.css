@@ -1,0 +1,55 @@
+/* =======================================================
+   QWE — ЕДИНЫЙ CSS
+   1. :root — главные цвета. Меняй их для смены палитры.
+   2. splash — анимированная заставка.
+   3. page — главный экран.
+   4. @keyframes — эффекты и движение.
+   ======================================================= */
+:root {
+  --bg:#080817; --panel:#121228; --text:#f7f6ff;
+  --muted:#9897b9; --pink:#ff9cdb; --blue:#3c86ff;
+  --red:#fa3b69; --violet:#9b52ed;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-x:hidden;isolation:isolate}
+.ambient{position:fixed;pointer-events:none;z-index:-2;filter:blur(28px);border-radius:50%;opacity:.6;animation:float 13s ease-in-out infinite alternate}
+.ambient-blue{width:70vw;height:70vw;max-width:550px;max-height:550px;background:radial-gradient(circle,#1646a56c,transparent 70%);left:-28vw;top:-20vw}
+.ambient-red{width:70vw;height:70vw;max-width:530px;max-height:530px;background:radial-gradient(circle,#b3174777,transparent 70%);right:-30vw;top:24vh;animation-delay:-5s}
+.ambient-purple{width:90vw;height:90vw;max-width:650px;max-height:650px;background:radial-gradient(circle,#581fa26a,transparent 70%);left:10vw;bottom:-35vw;animation-delay:-9s}
+.grain{position:fixed;inset:0;pointer-events:none;z-index:5;opacity:.15;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.88' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.13'/%3E%3C/svg%3E")}
+/* Экран загрузки: после класса .is-gone плавно исчезает */
+.splash{position:fixed;inset:0;z-index:20;background:radial-gradient(circle at 50% 38%,#21163f 0%,#0a0b20 42%,#070714 85%);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:18px;transition:opacity .7s ease,visibility .7s ease}
+.splash.is-gone{opacity:0;visibility:hidden;pointer-events:none}
+.splash-core{width:260px;height:260px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.orbit{position:absolute;border-radius:50%;border:1px solid transparent;inset:6px;animation:spin 5s linear infinite;border-top-color:var(--blue);border-right-color:#7c3ce6;box-shadow:0 0 25px #582be13c}
+.orbit-two{inset:26px;animation:spin 4s linear infinite reverse;border-top-color:var(--red);border-left-color:var(--pink)}
+.splash-logo,.brand{font-weight:900;letter-spacing:-.07em;background:linear-gradient(120deg,#fff 5%,#ffbce6 47%,#fff 77%,#eab8ff);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 42px #f356b222}
+.splash-logo{font-size:74px;z-index:1;animation:breath 2s ease-in-out infinite alternate}
+.spark{font-size:15px;position:absolute;top:86px;right:33px;color:#ff9de2;-webkit-text-fill-color:#ff9de2;animation:twinkle 2s infinite}
+.splash-caption{font-size:9px;letter-spacing:.25em;color:#b9a9d6;margin-top:5px}
+.loader{height:3px;width:170px;background:#ffffff18;border-radius:8px;overflow:hidden}
+.loader span{display:block;width:45%;height:100%;background:linear-gradient(90deg,var(--blue),var(--pink),var(--red));border-radius:8px;animation:loading 1.45s ease-in-out infinite}
+.loader-caption{font-size:10px;letter-spacing:.22em;color:#aaa1c7}
+/* Основное содержание страницы */
+.page{width:min(100%,520px);min-height:100dvh;margin:0 auto;padding:calc(24px + env(safe-area-inset-top)) 20px calc(22px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:23px;opacity:1;transform:translateY(0);transition:opacity .7s ease,transform .7s ease}
+.page.is-hidden{opacity:0;transform:translateY(18px);visibility:hidden}
+.topbar{display:flex;justify-content:space-between;align-items:center}
+.brand{font-size:32px;line-height:1}.brand-mark{font-size:15px;vertical-align:middle;letter-spacing:0;margin-right:5px;color:#e5a0fa;-webkit-text-fill-color:#e5a0fa}
+.status{display:flex;align-items:center;gap:8px;font-size:9px;letter-spacing:.13em;color:#a5a4c5;font-weight:700}.status-dot{width:6px;height:6px;background:#f85c8b;box-shadow:0 0 12px #ff5c91;border-radius:50%;animation:twinkle 2.5s infinite}
+.profile{display:flex;align-items:center;gap:13px;padding:14px 16px;border:1px solid #ffffff19;border-radius:19px;background:linear-gradient(115deg,#25233b9a,#13172ab8);box-shadow:0 13px 35px #0003;backdrop-filter:blur(20px)}
+.avatar{width:52px;height:52px;flex:0 0 52px;border-radius:16px;display:flex;justify-content:center;align-items:center;font-weight:800;font-size:22px;color:white;background:linear-gradient(135deg,#773de6,#f84c88);box-shadow:0 0 22px #a53ef846;background-size:cover;background-position:center}
+.profile-copy{min-width:0;flex:1}.eyebrow{font-size:9px;letter-spacing:.2em;color:var(--pink);font-weight:800}.player-name{font-size:18px;font-weight:760;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.player-subtitle{font-size:11px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.profile-check{border-radius:50%;width:24px;height:24px;background:#2a2547;color:#c68bff;display:grid;place-items:center;font-size:12px}
+.hero{position:relative;flex:1;overflow:hidden;min-height:440px;border-radius:26px;padding:21px 21px 18px;border:1px solid #b17eff30;box-shadow:0 18px 65px #06060f80,inset 0 1px #ffffff20;background:radial-gradient(ellipse at 50% 34%,#57308163,transparent 54%),linear-gradient(145deg,#1d1a3b,#161329 45%,#22122f 100%);display:flex;align-items:center;flex-direction:column;text-align:center}
+.hero-glow{position:absolute;inset:-40%;background:conic-gradient(from 90deg,transparent,#2765c520,transparent,#e3305c1d,transparent);animation:spin 17s linear infinite;pointer-events:none}
+.hero-topline{position:relative;z-index:1;align-self:stretch;display:flex;justify-content:space-between;align-items:center}.hero-pill{border:1px solid #e5bbff3b;border-radius:20px;padding:8px 12px;color:#d5bff0;font-size:9px;letter-spacing:.15em}.hero-cross{font-size:23px;color:#ce91e6;animation:spin 12s linear infinite}
+.center-art{height:164px;width:164px;position:relative;display:grid;place-items:center;margin:18px 0 10px}.art-ring{position:absolute;border-radius:50%;inset:6px;border:1px dashed #a55cfd68;animation:spin 22s linear infinite}.art-ring-2{inset:23px;border-style:solid;border-color:#ed5ba45c;animation-direction:reverse;animation-duration:13s}
+.art-icon{font-size:76px;background:linear-gradient(145deg,#b89eff,#ff80a7,#a44aee);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 25px #cb53ff65);animation:gear 15s linear infinite}
+.kicker{position:relative;font-size:10px;color:#ff91c7;font-weight:800;letter-spacing:.24em;margin:3px 0 12px}
+h1{position:relative;margin:0;font-size:clamp(39px,10vw,55px);line-height:1.04;letter-spacing:-.055em;font-weight:850}h1 em{font-style:normal;background:linear-gradient(100deg,#ffb5e3,#f4f1ff 50%,#cfa4ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{position:relative;margin:19px 0 24px;font-size:12px;line-height:1.85;color:#c2bad3;max-width:300px}.line{margin-top:auto;width:100%;height:1px;background:#ffffff26;position:relative}.line span{display:block;width:42%;height:1px;background:linear-gradient(90deg,#4169fa,#ff73b1);box-shadow:0 0 9px #ff73b1;animation:slideLine 3s ease-in-out infinite alternate}.hero-bottom{width:100%;display:flex;justify-content:space-between;gap:8px;padding-top:16px;position:relative;font-size:9px;letter-spacing:.12em;color:#9e92ba}.hero-bottom b{color:#ffacdd;font-size:14px}
+footer{display:flex;justify-content:space-between;gap:8px;font-size:9px;letter-spacing:.11em;color:#807e9b;margin-top:auto}.footer-pulse{color:#a58fb8}
+@keyframes spin{to{transform:rotate(360deg)}}@keyframes breath{to{filter:brightness(1.3);transform:scale(1.04)}}@keyframes loading{0%{transform:translateX(-110%)}100%{transform:translateX(335%)}}@keyframes float{to{transform:translate(12px,30px) scale(1.12)}}@keyframes twinkle{50%{opacity:.35}}@keyframes gear{to{transform:rotate(360deg)}}@keyframes slideLine{to{transform:translateX(135%)}}
+@media(max-width:350px){.page{padding-left:12px;padding-right:12px;gap:16px}.hero{padding:16px}.status{font-size:8px}.hero p{font-size:11px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
