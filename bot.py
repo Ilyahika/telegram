@@ -1,60 +1,27 @@
-"""Telegram-бот QWE (aiogram 3). Запускается из main.py вместе с FastAPI."""
-import logging
+"""Telegram bot launching Mini App. Run as a separate process from FastAPI."""
+import asyncio
 import os
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
-from database import upsert_player
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
-logger = logging.getLogger(__name__)
-dp = Dispatcher()
-
-
-def mini_app_keyboard() -> InlineKeyboardMarkup:
-    """Кнопка под сообщением в личном чате запускает Mini App."""
-    url = os.getenv("WEBAPP_URL", "").rstrip("/")
-    if not url.startswith("https://"):
-        raise RuntimeError("WEBAPP_URL должен быть публичным HTTPS-адресом")
-    return InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text="✦ Открыть QWE", web_app=WebAppInfo(url=url))
-    ]])
-
-
-@dp.message(CommandStart())
-async def start(message: Message):
-    """Обрабатываем /start и автоматически создаём профиль."""
-    if message.chat.type != "private" or message.from_user is None:
-        return
-    player = upsert_player(message.from_user.model_dump(exclude_none=True))
-    await message.answer(
-        f"✦ Добро пожаловать в QWE, {player['display_name']}!\n\n"
-        "Технические работы ещё идут. Открой приложение, чтобы увидеть стартовый экран.",
-        reply_markup=mini_app_keyboard(),
-    )
-
-
-@dp.message()
-async def any_message(message: Message):
-    """При первом ЛЮБОМ сообщении в личке регистрируем игрока."""
-    if message.chat.type != "private" or message.from_user is None:
-        return
-    player = upsert_player(message.from_user.model_dump(exclude_none=True))
-    await message.answer(
-        f"✦ QWE · {player['display_name']}\nТехнические работы продолжаются.",
-        reply_markup=mini_app_keyboard(),
-    )
-
-
-async def run_bot():
-    """Запуск polling. Нужен ровно ОДИН процесс бота."""
-    token = os.getenv("BOT_TOKEN", "")
-    if not token or token == "PASTE_YOUR_BOT_TOKEN":
-        logger.warning("BOT_TOKEN не настроен — Telegram-бот не запущен")
-        return
-    bot = Bot(token=token)
+async def main():
+    token=os.getenv('BOT_TOKEN','')
+    url=os.getenv('WEBAPP_URL','')
+    if not token or not url.startswith('https://'):
+        raise RuntimeError('Укажи BOT_TOKEN и публичный HTTPS WEBAPP_URL')
+    bot=Bot(token=token)
+    dp=Dispatcher()
+    @dp.message(CommandStart())
+    async def start(message:Message):
+        keyboard=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text='🏝 Открыть Monster Islands',web_app=WebAppInfo(url=url))
+        ]])
+        await message.answer('🐲 Добро пожаловать в Monster Islands! Исследуй остров и собирай монстров.',reply_markup=keyboard)
     try:
-        # Удаляем старый webhook, чтобы polling мог получать сообщения
-        await bot.delete_webhook(drop_pending_updates=False)
-        await dp.start_polling(bot, handle_signals=False)
+        await dp.start_polling(bot)
     finally:
         await bot.session.close()
+
+if __name__=='__main__':
+    asyncio.run(main())
