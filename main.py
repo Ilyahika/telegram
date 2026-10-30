@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parent
 DB_FILE = Path(os.getenv('DB_PATH', str(ROOT / 'monster_islands.sqlite3')))
 BOT_TOKEN = os.getenv('BOT_TOKEN', '')
 DEV_DEMO = os.getenv('DEV_DEMO', '0') == '1'
-app = FastAPI(title='Monster Islands', version='1.3.0')
+app = FastAPI(title='Monster Islands', version='2.0.0')
 app.mount('/static', StaticFiles(directory=ROOT / 'static'), name='static')
 
 MONSTERS = [
@@ -102,7 +102,7 @@ def inventory(con,player_id):
 def home():return FileResponse(ROOT/'static'/'index.html')
 
 @app.get('/api/health')
-def health():return {'status':'ok','version':'1.0.0'}
+def health():return {'status':'ok','version':'2.0.0'}
 
 @app.post('/api/auth')
 def auth(x_telegram_init_data: str|None=Header(default=None)):
@@ -132,6 +132,8 @@ def open_case(payload:OpenCase,x_telegram_init_data: str|None=Header(default=Non
     if not case:raise HTTPException(404,'Кейс не найден')
     with transaction() as con:
         player=ensure_player(con,uid,name)
+        if not con.execute("SELECT 1 FROM island_buildings WHERE owner_id=? AND kind='shop'",(uid,)).fetchone():
+            raise HTTPException(403,'Сначала построй магазин в обучении')
         if player['coins']<case['price']:
             raise HTTPException(400,'Недостаточно монет')
         con.execute('UPDATE players SET coins=coins-? WHERE telegram_id=?',(case['price'],uid))
@@ -154,19 +156,29 @@ class NewBuilding(BaseModel):
     x: float = Field(ge=0.05, le=0.95)
     y: float = Field(ge=0.05, le=0.95)
 
-BUILDINGS = {'tree': 0, 'garden': 120, 'lantern': 60}
+BUILDINGS = {'shop': 0, 'expedition': 450, 'friends': 300}
+TOWNHALL = {'id':0, 'kind':'townhall','x':0.50,'y':0.48}
 with sqlite3.connect(DB_FILE) as _con:
-    _con.execute('CREATE TABLE IF NOT EXISTS island_state (owner_id INTEGER PRIMARY KEY, x REAL NOT NULL DEFAULT 0.5, y REAL NOT NULL DEFAULT 0.58)')
+    _con.execute('CREATE TABLE IF NOT EXISTS island_state (owner_id INTEGER PRIMARY KEY, x REAL NOT NULL DEFAULT 0.50, y REAL NOT NULL DEFAULT 0.57)')
     _con.execute('CREATE TABLE IF NOT EXISTS island_buildings (id INTEGER PRIMARY KEY AUTOINCREMENT, owner_id INTEGER NOT NULL, kind TEXT NOT NULL, x REAL NOT NULL, y REAL NOT NULL)')
+    _con.execute('CREATE TABLE IF NOT EXISTS progress (owner_id INTEGER PRIMARY KEY, tutorial INTEGER NOT NULL DEFAULT 0, last_claim INTEGER NOT NULL DEFAULT 0, last_expedition INTEGER NOT NULL DEFAULT 0)')
+
+def ensure_progress(con,uid):
+    con.execute('INSERT OR IGNORE INTO progress(owner_id) VALUES(?)',(uid,))
+    return con.execute('SELECT * FROM progress WHERE owner_id=?',(uid,)).fetchone()
+
+def active_buildings(con,uid):
+    structures=con.execute('SELECT id,kind,x,y FROM island_buildings WHERE owner_id=?',(uid,)).fetchall()
+    return [TOWNHALL,*[dict(r) for r in structures]]
 
 @app.get('/api/island')
 def get_island(x_telegram_init_data: str|None=Header(default=None)):
     uid,name=identity(x_telegram_init_data)
     with transaction() as con:
         ensure_player(con,uid,name)
+        progress=ensure_progress(con,uid)
         state=con.execute('SELECT x,y FROM island_state WHERE owner_id=?',(uid,)).fetchone()
-        structures=con.execute('SELECT id,kind,x,y FROM island_buildings WHERE owner_id=?',(uid,)).fetchall()
-        return {'position':dict(state) if state else {'x':0.5,'y':0.58}, 'buildings':[dict(r) for r in structures]}
+        return {'position':dict(state) if state else {'x':0.5,'y':0.57},'buildings':active_buildings(con,uid), 'tutorial':progress['tutorial'], 'townhall':TOWNHALL,'server_time':int(time.time()), 'last_claim':progress['last_claim'], 'last_expedition':progress['last_expedition']}
 
 @app.put('/api/island/position')
 def save_position(payload:IslandState,x_telegram_init_data: str|None=Header(default=None)):
@@ -176,23 +188,68 @@ def save_position(payload:IslandState,x_telegram_init_data: str|None=Header(defa
         con.execute('INSERT INTO island_state(owner_id,x,y) VALUES (?,?,?) ON CONFLICT(owner_id) DO UPDATE SET x=excluded.x,y=excluded.y',(uid,payload.x,payload.y))
     return {'saved':True}
 
+class TutorialStep(BaseModel):
+    step: int = Field(ge=1,le=3)
+
+@app.post('/api/tutorial/advance')
+def advance_tutorial(payload:TutorialStep,x_telegram_init_data: str|None=Header(default=None)):
+    uid,name=identity(x_telegram_init_data)
+    with transaction() as con:
+        ensure_player(con,uid,name)
+        p=ensure_progress(con,uid)
+        current=p['tutorial']
+        if payload.step==current:return {'tutorial':current}
+        if payload.step!=current+1:raise HTTPException(409,'Проходи обучение по порядку')
+        if payload.step==3 and not con.execute("SELECT 1 FROM island_buildings WHERE owner_id=? AND kind='shop'",(uid,)).fetchone():
+            raise HTTPException(409,'Сначала построй магазин')
+        con.execute('UPDATE progress SET tutorial=? WHERE owner_id=?',(payload.step,uid))
+        return {'tutorial':payload.step}
+
 @app.post('/api/island/build')
 def place_building(payload:NewBuilding,x_telegram_init_data: str|None=Header(default=None)):
     uid,name=identity(x_telegram_init_data)
-    if payload.kind not in BUILDINGS: raise HTTPException(400,'Неизвестная постройка')
+    if payload.kind not in BUILDINGS:raise HTTPException(400,'Неизвестная постройка')
     with transaction() as con:
         player=ensure_player(con,uid,name)
-        count=con.execute('SELECT COUNT(*) FROM island_buildings WHERE owner_id=?',(uid,)).fetchone()[0]
-        if count>=25:raise HTTPException(400,'Достигнут лимит построек')
+        progress=ensure_progress(con,uid)
+        if progress['tutorial']<2:raise HTTPException(403,'Сначала пройди обучение управлению')
+        if progress['tutorial']<3 and payload.kind!='shop':raise HTTPException(403,'Сначала построй магазин')
+        if con.execute('SELECT 1 FROM island_buildings WHERE owner_id=? AND kind=?',(uid,payload.kind)).fetchone():raise HTTPException(409,'Это здание уже построено')
         cost=BUILDINGS[payload.kind]
         if player['coins']<cost:raise HTTPException(400,'Недостаточно монет')
-        nearby=con.execute('SELECT 1 FROM island_buildings WHERE owner_id=? AND (x-?)*(x-?)+(y-?)*(y-?)<0.0064 LIMIT 1',(uid,payload.x,payload.x,payload.y,payload.y)).fetchone()
-        if nearby:raise HTTPException(400,'Слишком близко к другой постройке')
+        x,y=payload.x*96,payload.y*72
+        if x<31 or x>64 or y<21 or y>52:raise HTTPException(400,'Строить можно только на центральной территории')
+        if ((x-48)**2+(y-34.56)**2)<25:raise HTTPException(400,'Нельзя строить вплотную к ратуше')
+        rows=con.execute('SELECT x,y FROM island_buildings WHERE owner_id=?',(uid,)).fetchall()
+        if any(((r['x']-payload.x)*96)**2+((r['y']-payload.y)*72)**2<35 for r in rows):raise HTTPException(400,'Рядом уже есть здание')
         con.execute('UPDATE players SET coins=coins-? WHERE telegram_id=?',(cost,uid))
-        cur=con.execute('INSERT INTO island_buildings(owner_id,kind,x,y) VALUES (?,?,?,?)',(uid,payload.kind,payload.x,payload.y))
-        updated=con.execute('SELECT * FROM players WHERE telegram_id=?',(uid,)).fetchone()
-        return {'building':{'id':cur.lastrowid,'kind':payload.kind,'x':payload.x,'y':payload.y},'player':player_data(updated)}
+        cur=con.execute('INSERT INTO island_buildings(owner_id,kind,x,y) VALUES(?,?,?,?)',(uid,payload.kind,payload.x,payload.y))
+        return {'building':{'id':cur.lastrowid,'kind':payload.kind,'x':payload.x,'y':payload.y},'player':player_data(con.execute('SELECT * FROM players WHERE telegram_id=?',(uid,)).fetchone())}
 
+@app.post('/api/townhall/claim')
+def claim_income(x_telegram_init_data: str|None=Header(default=None)):
+    uid,name=identity(x_telegram_init_data)
+    with transaction() as con:
+        ensure_player(con,uid,name);p=ensure_progress(con,uid)
+        now=int(time.time());elapsed=now-p['last_claim'] if p['last_claim'] else 3600
+        reward=min(720,max(0,elapsed//60)*2)
+        if reward<2:raise HTTPException(429,'Доход пока не накопился')
+        con.execute('UPDATE progress SET last_claim=? WHERE owner_id=?',(now,uid))
+        con.execute('UPDATE players SET coins=coins+? WHERE telegram_id=?',(reward,uid))
+        return {'earned':reward,'last_claim':now,'player':player_data(con.execute('SELECT * FROM players WHERE telegram_id=?',(uid,)).fetchone())}
+
+@app.post('/api/expedition/collect')
+def expedition_collect(x_telegram_init_data: str|None=Header(default=None)):
+    uid,name=identity(x_telegram_init_data)
+    with transaction() as con:
+        ensure_player(con,uid,name)
+        if not con.execute("SELECT 1 FROM island_buildings WHERE owner_id=? AND kind='expedition'",(uid,)).fetchone():raise HTTPException(403,'Построй экспедицию')
+        p=ensure_progress(con,uid);now=int(time.time())
+        if now-p['last_expedition']<3600:raise HTTPException(429,'Следующая экспедиция через '+str(3600-(now-p['last_expedition']))+' сек')
+        reward=250
+        con.execute('UPDATE progress SET last_expedition=? WHERE owner_id=?',(now,uid))
+        con.execute('UPDATE players SET coins=coins+? WHERE telegram_id=?',(reward,uid))
+        return {'earned':reward,'player':player_data(con.execute('SELECT * FROM players WHERE telegram_id=?',(uid,)).fetchone())}
 
 # Trading market: every operation is atomic, ownership and funds are checked server-side.
 with sqlite3.connect(DB_FILE) as _con:
