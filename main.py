@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parent
 DB_FILE = Path(os.getenv('DB_PATH', str(ROOT / 'monster_islands.sqlite3')))
 BOT_TOKEN = os.getenv('BOT_TOKEN', '')
 DEV_DEMO = os.getenv('DEV_DEMO', '0') == '1'
-app = FastAPI(title='Monster Islands', version='0.2.0')
+app = FastAPI(title='Monster Islands', version='1.0.0')
 app.mount('/static', StaticFiles(directory=ROOT / 'static'), name='static')
 
 MONSTERS = [
@@ -102,7 +102,7 @@ def inventory(con,player_id):
 def home():return FileResponse(ROOT/'static'/'index.html')
 
 @app.get('/api/health')
-def health():return {'status':'ok','version':'0.2.0'}
+def health():return {'status':'ok','version':'1.0.0'}
 
 @app.post('/api/auth')
 def auth(x_telegram_init_data: str|None=Header(default=None)):
@@ -143,3 +143,52 @@ def open_case(payload:OpenCase,x_telegram_init_data: str|None=Header(default=Non
         con.execute('INSERT INTO case_openings(owner_id,case_id,owned_id,created) VALUES (?,?,?,?)',(uid,case['id'],cursor.lastrowid,now))
         updated=con.execute('SELECT * FROM players WHERE telegram_id=?',(uid,)).fetchone()
         return {'reward':dict(instance_id=cursor.lastrowid,obtained=now,**chosen),'player':player_data(updated)}
+
+# Island progress is stored server-side per authenticated Telegram player.
+class IslandState(BaseModel):
+    x: float = Field(ge=0.03, le=0.97)
+    y: float = Field(ge=0.03, le=0.97)
+
+class NewBuilding(BaseModel):
+    kind: str
+    x: float = Field(ge=0.05, le=0.95)
+    y: float = Field(ge=0.05, le=0.95)
+
+BUILDINGS = {'tree': 0, 'garden': 120, 'lantern': 60}
+with sqlite3.connect(DB_FILE) as _con:
+    _con.execute('CREATE TABLE IF NOT EXISTS island_state (owner_id INTEGER PRIMARY KEY, x REAL NOT NULL DEFAULT 0.5, y REAL NOT NULL DEFAULT 0.58)')
+    _con.execute('CREATE TABLE IF NOT EXISTS island_buildings (id INTEGER PRIMARY KEY AUTOINCREMENT, owner_id INTEGER NOT NULL, kind TEXT NOT NULL, x REAL NOT NULL, y REAL NOT NULL)')
+
+@app.get('/api/island')
+def get_island(x_telegram_init_data: str|None=Header(default=None)):
+    uid,name=identity(x_telegram_init_data)
+    with transaction() as con:
+        ensure_player(con,uid,name)
+        state=con.execute('SELECT x,y FROM island_state WHERE owner_id=?',(uid,)).fetchone()
+        structures=con.execute('SELECT id,kind,x,y FROM island_buildings WHERE owner_id=?',(uid,)).fetchall()
+        return {'position':dict(state) if state else {'x':0.5,'y':0.58}, 'buildings':[dict(r) for r in structures]}
+
+@app.put('/api/island/position')
+def save_position(payload:IslandState,x_telegram_init_data: str|None=Header(default=None)):
+    uid,name=identity(x_telegram_init_data)
+    with transaction() as con:
+        ensure_player(con,uid,name)
+        con.execute('INSERT INTO island_state(owner_id,x,y) VALUES (?,?,?) ON CONFLICT(owner_id) DO UPDATE SET x=excluded.x,y=excluded.y',(uid,payload.x,payload.y))
+    return {'saved':True}
+
+@app.post('/api/island/build')
+def place_building(payload:NewBuilding,x_telegram_init_data: str|None=Header(default=None)):
+    uid,name=identity(x_telegram_init_data)
+    if payload.kind not in BUILDINGS: raise HTTPException(400,'Неизвестная постройка')
+    with transaction() as con:
+        player=ensure_player(con,uid,name)
+        count=con.execute('SELECT COUNT(*) FROM island_buildings WHERE owner_id=?',(uid,)).fetchone()[0]
+        if count>=25:raise HTTPException(400,'Достигнут лимит построек')
+        cost=BUILDINGS[payload.kind]
+        if player['coins']<cost:raise HTTPException(400,'Недостаточно монет')
+        nearby=con.execute('SELECT 1 FROM island_buildings WHERE owner_id=? AND (x-?)*(x-?)+(y-?)*(y-?)<0.0064 LIMIT 1',(uid,payload.x,payload.x,payload.y,payload.y)).fetchone()
+        if nearby:raise HTTPException(400,'Слишком близко к другой постройке')
+        con.execute('UPDATE players SET coins=coins-? WHERE telegram_id=?',(cost,uid))
+        cur=con.execute('INSERT INTO island_buildings(owner_id,kind,x,y) VALUES (?,?,?,?)',(uid,payload.kind,payload.x,payload.y))
+        updated=con.execute('SELECT * FROM players WHERE telegram_id=?',(uid,)).fetchone()
+        return {'building':{'id':cur.lastrowid,'kind':payload.kind,'x':payload.x,'y':payload.y},'player':player_data(updated)}
