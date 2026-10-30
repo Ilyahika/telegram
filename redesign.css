@@ -1,0 +1,66 @@
+/* VIVA · OCEAN GLASS · 2026 visual refresh
+   Presentation-only layer. No game data, endpoints or handlers modified. */
+:root{color-scheme:dark;--bg:#060d1b;--p:#101d32;--p2:#152740;--ln:#2b4968;--t:#f0f7ff;--m:#9bb3cd;--y:#59c9f7;--r:#ff607f;--g:#3ddbc6;--sea:#36bff5;--viva-accent:#59c9f7}
+html{background:#060d1b;scroll-behavior:smooth}
+body{background:radial-gradient(ellipse 75% 330px at 50% 0%,#12375d 0%,transparent 90%),radial-gradient(ellipse 70% 400px at 100% 35%,#151d49 0%,transparent 92%),#060d1b!important;color:#f0f7ff;letter-spacing:.005em;min-height:100dvh}
+body:before{content:"";position:fixed;pointer-events:none;inset:0;background:linear-gradient(135deg,#ffffff04,transparent 35%,#42bbf205);z-index:-1}
+#view{min-width:0;animation:vivaPageEnter .3s ease-out both}
+@keyframes vivaPageEnter{from{opacity:.5;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+#header{position:relative;z-index:2}
+.topbar{padding:10px 13px!important;border:1px solid #35547488;border-radius:20px;background:linear-gradient(130deg,#152c49dd,#0e1b2fdd)!important;box-shadow:0 8px 28px #0003,inset 0 1px #ffffff14;backdrop-filter:blur(14px)}
+.ava{border-color:#60cdf4!important;box-shadow:0 0 0 3px #0c1c30,0 0 18px #3caffc2a!important}
+.panel,.card,.kv>div,.kpi>div,.prow,.list>div{background:linear-gradient(145deg,#162a44,#0e1d32)!important;border:1px solid #385878a6!important;border-radius:18px!important;box-shadow:inset 0 1px #ffffff0c,0 8px 18px #0002}
+.panel{padding:17px!important;margin:12px 0!important}
+h1,h2,h3{letter-spacing:-.035em}h2{color:#c6dfef;letter-spacing:.065em}
+.m,small,.hint{color:#9db9d2}.income,.ok{color:#73dcff!important}.prog{height:9px;border-radius:30px;background:#071322}.prog i{background:linear-gradient(90deg,#1d86eb,#51e1de)!important;border-radius:30px}
+.pill:not(.r):not(.g){background:#1c5880!important;color:#eafaff!important;border:1px solid #438cb6}
+button{background:linear-gradient(135deg,#1a78b4,#24a7d2)!important;border:1px solid #52badf!important;color:#f4fcff!important;border-radius:13px!important;box-shadow:inset 0 1px #ffffff2b,0 4px 12px #05132433;transition:transform .16s ease,filter .18s ease,box-shadow .18s ease!important;touch-action:manipulation}
+button:hover:not(:disabled){filter:brightness(1.09);box-shadow:0 6px 18px #2b9dd32a,inset 0 1px #ffffff35}
+button:active:not(:disabled){transform:scale(.974)}button:focus-visible{outline:2px solid #80e2ff;outline-offset:3px}
+button.ghost,button.chip:not(.on){background:#172b43!important;color:#d2e9fa!important;border:1px solid #375676!important;box-shadow:none}
+button.chip.on{background:linear-gradient(130deg,#21588a,#3167bd)!important;color:white!important}
+button.red{background:linear-gradient(135deg,#a72e5b,#e24b71)!important;border-color:#f47792!important}
+input,select,textarea{background:#0b1b30!important;color:#eaf6ff!important;border:1px solid #38587a!important;border-radius:12px!important;min-height:42px}input:focus,select:focus,textarea:focus{border-color:#5bcaed!important;box-shadow:0 0 0 3px #37b8ef22}input[type=range]{accent-color:#51c7ee}
+#nav,nav#nav{left:10px!important;right:10px!important;bottom:calc(8px + env(safe-area-inset-bottom))!important;margin:0 auto!important;max-width:530px;border:1px solid #42668888!important;border-radius:20px!important;padding:7px!important;gap:3px!important;background:#091829ee!important;backdrop-filter:blur(18px);box-shadow:0 8px 35px #0009!important;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+#nav button{min-width:0;max-width:none;border:0!important;border-radius:13px!important;padding:9px 3px!important;background:transparent!important;color:#9bb2cb!important;box-shadow:none!important;line-height:1.2}
+#nav button b{font-size:20px;line-height:1.4}
+#nav button.on{background:linear-gradient(155deg,#1e4d78,#173b61)!important;color:#84dcff!important;box-shadow:inset 0 0 0 1px #539bd453!important}
+#status,#toast>div{border-color:#387996!important;border-radius:15px!important;background:#10273beb!important;backdrop-filter:blur(12px)}
+#modal:not([hidden]){backdrop-filter:blur(8px)}
+#modal>*,.modal>div{border-color:#446889!important;border-radius:22px!important;background:linear-gradient(150deg,#172a44,#0a192b)!important;box-shadow:0 24px 70px #0009}
+/* Menu: equal-size cards, crisp typography and subtle highlight */
+.menu-v13{color:#eef9ff}
+.menu-v13-heading{padding:9px 2px 14px}
+.menu-v13-heading h1{font-size:clamp(25px,7vw,34px)!important;letter-spacing:-1px!important;line-height:1.1}
+.menu-v13-profile{background:linear-gradient(120deg,#153451,#112640)!important;border:1px solid #4a7b9d88!important;border-radius:22px!important;box-shadow:inset 0 1px #ffffff1a,0 10px 24px #0003!important;padding:15px!important}
+.menu-v13-avatar{background:linear-gradient(140deg,#255b87,#26345d)!important;border:1px solid #64c6eb!important;border-radius:19px!important}
+.menu-v13-grid{gap:11px!important}
+.menu-v13-grid .menu-v13-card{position:relative;isolation:isolate;overflow:hidden;min-width:0;min-height:157px!important;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;text-align:left!important;padding:17px!important;border-radius:22px!important;border:1px solid #ffffff28!important;box-shadow:inset 0 1px #ffffff18,0 10px 20px #0003!important;transition:transform .2s ease,filter .2s ease!important}
+.menu-v13-card:before{content:"";position:absolute;z-index:-1;width:165px;height:165px;right:-73px;top:-80px;border-radius:50%;background:#ffffff13;filter:blur(5px)}
+.menu-v13-card .menu-v13-emoji{position:absolute;top:15px;left:15px;font-size:31px!important;filter:drop-shadow(0 6px 10px #0004)}
+.menu-v13-card .menu-v13-card-arrow{position:absolute;right:13px;top:13px;display:grid;place-items:center;width:29px;height:29px;background:#ffffff17;border:1px solid #ffffff22;border-radius:10px}
+.menu-v13-card b{font-size:16px!important;line-height:1.15;letter-spacing:-.3px}.menu-v13-card small{font-size:11px!important;line-height:1.45;color:#e0edfbcc!important}
+.menu-v13-card.tone-blue{background:linear-gradient(150deg,#18588b,#102e55)!important}.menu-v13-card.tone-teal{background:linear-gradient(150deg,#12665e,#123749)!important}.menu-v13-card.tone-violet,.menu-v13-card.tone-purple{background:linear-gradient(145deg,#503c88,#252449)!important}.menu-v13-card.tone-red{background:linear-gradient(145deg,#833b65,#392341)!important}.menu-v13-card.tone-orange{background:linear-gradient(145deg,#93526a,#3b2a55)!important}
+/* Fishing: standout primary action and water-like glass */
+.v20-fishing #cast{background:linear-gradient(115deg,#167bdf,#37bbd0)!important;border:1px solid #81e7fc!important;color:white!important;box-shadow:0 8px 23px #137fb949,inset 0 1px #ffffff55!important;min-height:54px}
+.v20-fishing .panel,.v20-fishing .card{border-radius:22px!important}
+/* Backpack: layout untouched, more consistent surface styling */
+#view.v21-backpack{--bag-text:#eef8ff;--bag-muted:#a0bad1}
+.v21-backpack .v21-bag-heading{box-shadow:0 16px 34px #0004,inset 0 1px #ffffff20!important}
+.v21-backpack .v21-item{transition:transform .2s,border-color .2s}.v21-backpack .v21-item:active{transform:scale(.98)}
+.v21-backpack .v21-item .v21-item-art{background:radial-gradient(ellipse at center,#369cdb29,transparent 73%)!important}
+/* Cases: enhanced stage contrast; never change the roulette logic */
+.v20-case-screen .v20-rolling{border-radius:20px!important}
+.v20-case-screen .v20-roll-item{border-radius:16px!important}
+.v20-case-screen .v20-reward{border-radius:20px!important}
+.v20-case-screen .v20-stage-actions button{min-height:46px!important}
+/* Shop: red-to-coral premium accents */
+.v16-shop-page .v16-pack{background:linear-gradient(125deg,#7b315f,#b54568 48%,#eb6878 85%)!important;border:1px solid #f2a1b4!important;border-radius:20px!important;box-shadow:0 10px 26px #d43f7240!important}
+.v16-shop-page .v16-pack .v16-pack-cta{background:#3f193e99!important;color:#fff!important;border:1px solid #ffb7c6!important;border-radius:12px!important}
+.v16-shop-page .v16-product,.v16-shop-page .v16-wallet{border-radius:22px!important;box-shadow:inset 0 1px #ffffff14,0 10px 24px #0002}
+/* Admin: visual polish without altering controls */
+body.adm .kpi>div{padding:16px!important}body.adm .kpi b{color:#7cdbff}
+body.adm .sub button{border-radius:12px!important}body.adm .prow:hover{border-color:#59c6ed!important}
+@media(max-width:380px){.menu-v13-grid{gap:8px!important}.menu-v13-grid .menu-v13-card{min-height:143px!important;padding:12px!important}.menu-v13-card b{font-size:14px!important}#nav button{font-size:8px!important}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}#view{animation:none}*,*:before,*:after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
