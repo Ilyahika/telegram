@@ -11,3 +11,6 @@
  #tabs button{padding:7px 8px;font-size:11px}
  #panelBody{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+/* Pixel game visual refresh */
+body{font-family:system-ui,Verdana,sans-serif} .chip,.floating,.window,.card,#buildPicker{border-radius:5px;box-shadow:0 5px 0 #0b1820,0 12px 30px #0005} .chip{background:#132b37f0;border-color:#c3d4a5} .floating{background:#223e44f2;border-color:#f2d18a;text-shadow:1px 2px #111} .right{background:#3a7855} .window{background:linear-gradient(180deg,#203f46,#112833);border-color:#e3bc74} .card{background:linear-gradient(180deg,#294952,#173039);border-color:#788f86} #joystick{box-shadow:inset 0 0 0 9px #2b495360} .market-heading{grid-column:1/-1;font-weight:900;color:#f6d892;padding:8px}

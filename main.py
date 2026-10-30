@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parent
 DB_FILE = Path(os.getenv('DB_PATH', str(ROOT / 'monster_islands.sqlite3')))
 BOT_TOKEN = os.getenv('BOT_TOKEN', '')
 DEV_DEMO = os.getenv('DEV_DEMO', '0') == '1'
-app = FastAPI(title='Monster Islands', version='1.0.0')
+app = FastAPI(title='Monster Islands', version='1.3.0')
 app.mount('/static', StaticFiles(directory=ROOT / 'static'), name='static')
 
 MONSTERS = [
@@ -96,7 +96,7 @@ def player_data(row):
 
 def inventory(con,player_id):
     rows=con.execute('SELECT id, monster_id, obtained FROM owned_monsters WHERE owner_id=? ORDER BY id DESC',(player_id,)).fetchall()
-    return [dict(instance_id=r['id'],obtained=r['obtained'],**CATALOG[r['monster_id']]) for r in rows]
+    return [dict(instance_id=r['id'],obtained=r['obtained'],listed=bool(con.execute("SELECT 1 FROM market WHERE owned_id=? AND status='active'",(r['id'],)).fetchone()),**CATALOG[r['monster_id']]) for r in rows]
 
 @app.get('/')
 def home():return FileResponse(ROOT/'static'/'index.html')
@@ -192,3 +192,82 @@ def place_building(payload:NewBuilding,x_telegram_init_data: str|None=Header(def
         cur=con.execute('INSERT INTO island_buildings(owner_id,kind,x,y) VALUES (?,?,?,?)',(uid,payload.kind,payload.x,payload.y))
         updated=con.execute('SELECT * FROM players WHERE telegram_id=?',(uid,)).fetchone()
         return {'building':{'id':cur.lastrowid,'kind':payload.kind,'x':payload.x,'y':payload.y},'player':player_data(updated)}
+
+
+# Trading market: every operation is atomic, ownership and funds are checked server-side.
+with sqlite3.connect(DB_FILE) as _con:
+    _con.execute("CREATE TABLE IF NOT EXISTS market (id INTEGER PRIMARY KEY AUTOINCREMENT, seller INTEGER NOT NULL, owned_id INTEGER NOT NULL UNIQUE, price INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'active', buyer INTEGER, created INTEGER NOT NULL)")
+    _con.execute("CREATE INDEX IF NOT EXISTS market_active ON market(status,created)")
+    _con.execute("CREATE TABLE IF NOT EXISTS selected_companions (owner_id INTEGER PRIMARY KEY, monster_owned_id INTEGER NOT NULL)")
+
+class MarketOffer(BaseModel):
+    owned_id: int = Field(gt=0)
+    price: int = Field(ge=10,le=1000000)
+
+@app.get('/api/market')
+def market_list():
+    with sqlite3.connect(DB_FILE) as con:
+        con.row_factory=sqlite3.Row
+        rows=con.execute("SELECT m.id,m.seller,m.price,m.created,o.monster_id FROM market m JOIN owned_monsters o ON o.id=m.owned_id WHERE m.status='active' ORDER BY m.created DESC LIMIT 100").fetchall()
+        return {'listings':[dict(listing_id=r['id'],seller_id=r['seller'],price=r['price'],created=r['created'],**CATALOG[r['monster_id']]) for r in rows]}
+
+@app.post('/api/market/list')
+def market_create(payload:MarketOffer,x_telegram_init_data: str|None=Header(default=None)):
+    uid,name=identity(x_telegram_init_data)
+    with transaction() as con:
+        ensure_player(con,uid,name)
+        owned=con.execute('SELECT id FROM owned_monsters WHERE id=? AND owner_id=?',(payload.owned_id,uid)).fetchone()
+        if not owned:raise HTTPException(403,'Монстр тебе не принадлежит')
+        listed=con.execute("SELECT id FROM market WHERE owned_id=? AND status='active'",(payload.owned_id,)).fetchone()
+        if listed:raise HTTPException(409,'Этот монстр уже продаётся')
+        cur=con.execute("INSERT INTO market(seller,owned_id,price,status,created) VALUES (?,?,?,'active',?)",(uid,payload.owned_id,payload.price,int(time.time())))
+        return {'listing_id':cur.lastrowid}
+
+@app.post('/api/market/{listing_id}/buy')
+def market_buy(listing_id:int,x_telegram_init_data: str|None=Header(default=None)):
+    uid,name=identity(x_telegram_init_data)
+    with transaction() as con:
+        player=ensure_player(con,uid,name)
+        offer=con.execute("SELECT * FROM market WHERE id=? AND status='active'",(listing_id,)).fetchone()
+        if not offer:raise HTTPException(404,'Объявление неактивно')
+        if offer['seller']==uid:raise HTTPException(400,'Нельзя купить своего монстра')
+        if player['coins']<offer['price']:raise HTTPException(400,'Недостаточно монет')
+        valid=con.execute('SELECT id FROM owned_monsters WHERE id=? AND owner_id=?',(offer['owned_id'],offer['seller'])).fetchone()
+        if not valid:raise HTTPException(409,'Монстр больше недоступен')
+        fee=(offer['price']*5+99)//100
+        con.execute('UPDATE players SET coins=coins-? WHERE telegram_id=?',(offer['price'],uid))
+        con.execute('UPDATE players SET coins=coins+? WHERE telegram_id=?',(offer['price']-fee,offer['seller']))
+        con.execute('UPDATE owned_monsters SET owner_id=? WHERE id=?',(uid,offer['owned_id']))
+        con.execute("UPDATE market SET status='sold',buyer=? WHERE id=?",(uid,listing_id))
+        con.execute('DELETE FROM selected_companions WHERE owner_id=? AND monster_owned_id=?',(offer['seller'],offer['owned_id']))
+        return {'ok':True,'player':player_data(con.execute('SELECT * FROM players WHERE telegram_id=?',(uid,)).fetchone())}
+
+@app.post('/api/market/{listing_id}/cancel')
+def market_cancel(listing_id:int,x_telegram_init_data: str|None=Header(default=None)):
+    uid,name=identity(x_telegram_init_data)
+    with transaction() as con:
+        ensure_player(con,uid,name)
+        changed=con.execute("UPDATE market SET status='cancelled' WHERE id=? AND seller=? AND status='active'",(listing_id,uid)).rowcount
+        if not changed:raise HTTPException(404,'Нет доступного объявления')
+        return {'ok':True}
+
+class CompanionChoice(BaseModel):
+    owned_id: int = Field(gt=0)
+
+@app.get('/api/companion')
+def companion_get(x_telegram_init_data: str|None=Header(default=None)):
+    uid,name=identity(x_telegram_init_data)
+    with transaction() as con:
+        ensure_player(con,uid,name)
+        row=con.execute('SELECT monster_owned_id FROM selected_companions WHERE owner_id=?',(uid,)).fetchone()
+        return {'owned_id':row['monster_owned_id'] if row else None}
+
+@app.post('/api/companion')
+def companion_set(choice:CompanionChoice,x_telegram_init_data: str|None=Header(default=None)):
+    uid,name=identity(x_telegram_init_data)
+    with transaction() as con:
+        ensure_player(con,uid,name)
+        valid=con.execute("SELECT o.id FROM owned_monsters o WHERE o.id=? AND o.owner_id=? AND NOT EXISTS(SELECT 1 FROM market m WHERE m.owned_id=o.id AND m.status='active')",(choice.owned_id,uid)).fetchone()
+        if not valid:raise HTTPException(403,'Выбрать этого монстра нельзя')
+        con.execute('INSERT INTO selected_companions(owner_id,monster_owned_id) VALUES(?,?) ON CONFLICT(owner_id) DO UPDATE SET monster_owned_id=excluded.monster_owned_id',(uid,choice.owned_id))
+        return {'ok':True}
